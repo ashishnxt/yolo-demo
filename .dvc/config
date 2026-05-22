@@ -1,5 +1,6 @@
 [core]
     remote = gdrive
-[remote "gdrive"]
-    url = "gdrive://#1kptSZaOKu-_0MiPSY5Mhdd2DcHrWq3AI"
+['remote "gdrive"']
+    url = "https://drive.google.com/drive/folders/1kptSZaOKu-_0MiPSY5Mhdd2DcHrWq3AI"
+#url = "gdrive://#1kptSZaOKu-_0MiPSY5Mhdd2DcHrWq3AI"
     verify = true
