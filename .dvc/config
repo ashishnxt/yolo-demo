@@ -1,0 +1,5 @@
+[core]
+    remote = gdrive
+['remote "gdrive"']
+    url = "gdrive://#1kptSZaOKu-_0MiPSY5Mhdd2DcHrWq3AI"
+    verify = true
