@@ -11,6 +11,7 @@ task = Task.init(
     task_name="baseline"
 )
 
+
 args = {
     "epochs":        10,
     "batch_size":    32,
@@ -19,19 +20,18 @@ args = {
     "image_size":    416,
     "dataset_yaml":  "voc2007.yaml",
 }
+
 args = task.connect(args)
 
 print(f">> dataset_yaml from dashboard: {args['dataset_yaml']}")
 
-# ── Working directory is the repo root ────────────────────
 REPO_ROOT = os.path.abspath(".")
 print(f">> Repo root: {REPO_ROOT}")
 
-# ── Install DVC first ──────────────────────────────────────
+# ── Install DVC ────────────────────────────────────────────
 print(">> Installing DVC...")
 subprocess.run([sys.executable, "-m", "pip", "install",
     "dvc", "dvc-gdrive", "-q"], check=True)
-print(">> DVC installed")
 
 # ── Pull dataset via DVC ───────────────────────────────────
 print(">> Pulling dataset via DVC...")
@@ -40,7 +40,6 @@ try:
     print(">> Dataset ready via DVC")
 except Exception as e:
     print(f">> DVC pull failed: {e}")
-    print(">> Will download dataset directly as fallback")
 
 # ── Install YOLOv5 ─────────────────────────────────────────
 if not os.path.exists("yolov5"):
@@ -51,38 +50,18 @@ if not os.path.exists("yolov5"):
 subprocess.run([sys.executable, "-m", "pip", "install",
     "-r", "yolov5/requirements.txt", "-q"], check=True)
 
-# ── Copy yaml files and fix paths inside them ─────────────
-print(">> Copying yaml files to yolov5/data/...")
-for yaml_file in glob.glob("*.yaml"):
-    dest = f"yolov5/data/{yaml_file}"
-
-    # Read yaml content and fix relative paths to absolute
-    with open(yaml_file, "r") as f:
-        content = f.read()
-
-    # Replace relative path with absolute repo root path
-    content = content.replace(
-        "path: ../dataset",
-        f"path: {REPO_ROOT}/dataset"
-    )
-    content = content.replace(
-        "path: dataset",
-        f"path: {REPO_ROOT}/dataset"
-    )
-
-    with open(dest, "w") as f:
-        f.write(content)
-
-    print(f">> Copied and patched {yaml_file} -> {dest}")
-
-# ── If VOC2007 images missing, download directly ──────────
+# ── Handle VOC2007 dataset ─────────────────────────────────
 dataset_yaml = os.path.basename(args["dataset_yaml"])
 
 if "voc" in dataset_yaml.lower():
-    voc_path = os.path.join(REPO_ROOT, "dataset", "voc2007", "VOCdevkit")
-    images_path = os.path.join(voc_path, "VOC2007", "JPEGImages")
+    voc_root    = os.path.join(REPO_ROOT, "dataset", "voc2007", "VOCdevkit", "VOC2007")
+    images_path = os.path.join(voc_root, "JPEGImages")
+    labels_path = os.path.join(voc_root, "labels")
+    annot_path  = os.path.join(voc_root, "Annotations")
+
+    # Download if missing
     if not os.path.exists(images_path):
-        print(">> VOC2007 images not found, downloading directly...")
+        print(">> VOC2007 not found, downloading...")
         os.makedirs(os.path.join(REPO_ROOT, "dataset", "voc2007"), exist_ok=True)
         subprocess.run([
             "wget", "-q",
@@ -94,9 +73,75 @@ if "voc" in dataset_yaml.lower():
             f"{REPO_ROOT}/dataset/voc2007/voc2007.tar",
             "-C", f"{REPO_ROOT}/dataset/voc2007/"
         ], check=True)
-        print(">> VOC2007 downloaded and extracted")
+        print(">> VOC2007 downloaded")
+
+    # Convert XML annotations to YOLO TXT format if not done yet
+    if not os.path.exists(labels_path) or len(os.listdir(labels_path)) == 0:
+        print(">> Converting VOC XML annotations to YOLO TXT format...")
+        os.makedirs(labels_path, exist_ok=True)
+
+        import xml.etree.ElementTree as ET
+
+        # VOC class names — must match voc2007.yaml order
+        VOC_CLASSES = [
+            "aeroplane", "bicycle", "bird", "boat", "bottle",
+            "bus", "car", "cat", "chair", "cow", "diningtable",
+            "dog", "horse", "motorbike", "person", "pottedplant",
+            "sheep", "sofa", "train", "tvmonitor"
+        ]
+
+        converted = 0
+        for xml_file in glob.glob(os.path.join(annot_path, "*.xml")):
+            tree = ET.parse(xml_file)
+            root = tree.getroot()
+
+            img_w = int(root.find("size/width").text)
+            img_h = int(root.find("size/height").text)
+
+            txt_lines = []
+            for obj in root.findall("object"):
+                cls_name = obj.find("name").text
+                if cls_name not in VOC_CLASSES:
+                    continue
+                cls_id = VOC_CLASSES.index(cls_name)
+
+                bbox = obj.find("bndbox")
+                xmin = float(bbox.find("xmin").text)
+                ymin = float(bbox.find("ymin").text)
+                xmax = float(bbox.find("xmax").text)
+                ymax = float(bbox.find("ymax").text)
+
+                # Convert to YOLO format (normalized cx, cy, w, h)
+                cx = (xmin + xmax) / 2 / img_w
+                cy = (ymin + ymax) / 2 / img_h
+                w  = (xmax - xmin) / img_w
+                h  = (ymax - ymin) / img_h
+
+                txt_lines.append(f"{cls_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}")
+
+            # Save txt file with same name as xml
+            txt_name = os.path.splitext(os.path.basename(xml_file))[0] + ".txt"
+            with open(os.path.join(labels_path, txt_name), "w") as f:
+                f.write("\n".join(txt_lines))
+            converted += 1
+
+        print(f">> Converted {converted} XML files to YOLO TXT format")
     else:
-        print(">> VOC2007 images found via DVC")
+        print(f">> Labels already exist: {len(os.listdir(labels_path))} files")
+
+# ── Copy and patch yaml files ──────────────────────────────
+print(">> Copying yaml files to yolov5/data/...")
+for yaml_file in glob.glob("*.yaml"):
+    dest = f"yolov5/data/{yaml_file}"
+    with open(yaml_file, "r") as f:
+        content = f.read()
+    content = content.replace(
+        "path: dataset",
+        f"path: {REPO_ROOT}/dataset"
+    )
+    with open(dest, "w") as f:
+        f.write(content)
+    print(f">> Copied and patched {yaml_file} -> {dest}")
 
 # ── Build full absolute path for dataset yaml ─────────────
 dataset_yaml_full = os.path.abspath(f"yolov5/data/{dataset_yaml}")

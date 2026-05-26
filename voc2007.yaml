@@ -1,6 +1,6 @@
-path: dataset/voc2007/VOCdevkit
-train: VOC2007/JPEGImages
-val:   VOC2007/JPEGImages
+path: dataset/voc2007/VOCdevkit/VOC2007
+train: JPEGImages
+val:   JPEGImages
 nc: 20
 names:
   0:  aeroplane
