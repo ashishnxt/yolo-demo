@@ -53,6 +53,16 @@ import shutil, glob
 for yaml_file in glob.glob("*.yaml"):
     shutil.copy(yaml_file, f"yolov5/data/{yaml_file}")
     print(f">> Copied {yaml_file} to yolov5/data/")
+
+
+
+# If dataset_yaml is just a filename (not a path), prefix it with yolov5/data/
+if "/" not in args["dataset_yaml"]:
+    args["dataset_yaml"] = f"yolov5/data/{args['dataset_yaml']}"
+    print(f">> dataset_yaml resolved to: {args['dataset_yaml']}")
+
+
+
 # ── Train ──────────────────────────────────────────────────
 subprocess.run([
     sys.executable, "yolov5/train.py",
