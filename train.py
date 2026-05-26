@@ -14,7 +14,7 @@ task = Task.init(
 
 
 args = {
-    "epochs":        10,
+    "epochs":        2,
     "batch_size":    32,
     "learning_rate": 0.001,
     "weights":       "yolov5m.pt",
