@@ -1,4 +1,4 @@
-path: ../dataset/voc2007/VOCdevkit
+path: dataset/voc2007/VOCdevkit
 train: VOC2007/JPEGImages
 val:   VOC2007/JPEGImages
 nc: 20
