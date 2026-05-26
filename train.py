@@ -1,4 +1,3 @@
-cat > /mnt/Data0/yolo-demo/train.py << 'EOF'
 import os
 import sys
 import shutil
@@ -84,4 +83,3 @@ if best.exists():
 
 task.close()
 print(">> Done! Check app.clear.ml")
-EOF
