@@ -1,14 +1,7 @@
-# voc2007.yaml
-# Dataset config for VOC2007 — used by YOLOv5
-
 path: ../dataset/voc2007/VOCdevkit
 train: VOC2007/JPEGImages
 val:   VOC2007/JPEGImages
-
-# Number of classes
 nc: 20
-
-# Class names — relevant to your company: car, bus, person, motorbike
 names:
   0:  aeroplane
   1:  bicycle

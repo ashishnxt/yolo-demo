@@ -48,6 +48,11 @@ if not os.path.exists("yolov5"):
 subprocess.run([sys.executable, "-m", "pip", "install",
     "-r", "yolov5/requirements.txt", "-q"], check=True)
 
+# Copy custom yaml files to yolov5/data/ so YOLOv5 can find them
+import shutil, glob
+for yaml_file in glob.glob("*.yaml"):
+    shutil.copy(yaml_file, f"yolov5/data/{yaml_file}")
+    print(f">> Copied {yaml_file} to yolov5/data/")
 # ── Train ──────────────────────────────────────────────────
 subprocess.run([
     sys.executable, "yolov5/train.py",
