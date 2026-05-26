@@ -1,3 +1,4 @@
+cat > /mnt/Data0/yolo-demo/train.py << 'EOF'
 import os
 import sys
 import shutil
@@ -21,6 +22,8 @@ args = {
 }
 args = task.connect(args)
 
+print(f">> dataset_yaml from dashboard: {args['dataset_yaml']}")
+
 # ── Pull dataset via DVC ───────────────────────────────────
 print(">> Pulling dataset via DVC...")
 try:
@@ -38,22 +41,28 @@ if not os.path.exists("yolov5"):
 subprocess.run([sys.executable, "-m", "pip", "install",
     "-r", "yolov5/requirements.txt", "-q"], check=True)
 
-# ── Copy all yaml files into yolov5/data/ ─────────────────
+# ── Copy all yaml files from repo root into yolov5/data/ ──
+print(">> Copying yaml files to yolov5/data/...")
 for yaml_file in glob.glob("*.yaml"):
     dest = f"yolov5/data/{yaml_file}"
     shutil.copy(yaml_file, dest)
     print(f">> Copied {yaml_file} -> {dest}")
 
-# ── Always build full absolute path for dataset_yaml ──────
+# list what is in yolov5/data for debug
+print(f">> yolov5/data contents: {os.listdir('yolov5/data/')}")
+
+# ── Build full absolute path ───────────────────────────────
 dataset_yaml = os.path.basename(args["dataset_yaml"])
 dataset_yaml_full = os.path.abspath(f"yolov5/data/{dataset_yaml}")
-print(f">> Using dataset yaml: {dataset_yaml_full}")
+print(f">> Resolved dataset yaml path: {dataset_yaml_full}")
 
 if not os.path.exists(dataset_yaml_full):
     raise FileNotFoundError(
         f"dataset yaml not found at: {dataset_yaml_full}\n"
         f"Files in yolov5/data/: {os.listdir('yolov5/data/')}"
     )
+
+print(f">> dataset yaml confirmed at: {dataset_yaml_full}")
 
 # ── Train ──────────────────────────────────────────────────
 subprocess.run([
@@ -75,3 +84,4 @@ if best.exists():
 
 task.close()
 print(">> Done! Check app.clear.ml")
+EOF
